@@ -83,6 +83,7 @@ class triviabot(irc.IRCClient):
         self._load_game()
         self._votes = 0
         self._voters = []
+        self._newQuestionMap = {}
 
     def _get_nickname(self):
         return self.factory.nickname
@@ -180,6 +181,8 @@ class triviabot(irc.IRCClient):
 
         # parses each incoming line, and sees if it's a command for the bot.
         try:
+            print "map is:"
+            print self._newQuestionMap
             if (msg[0] == "?"):
                 command = msg.replace('?', '').split()[0]
                 args = msg.replace('?', '').split()[1:]
@@ -190,12 +193,31 @@ class triviabot(irc.IRCClient):
                 args = msg.replace(self.nickname, '').split()[2:]
                 self.select_command(command, args, user, channel)
                 return
+            elif user in self._newQuestionMap.keys():
+                print "found user in map"
+                questionState = self._newQuestionMap[user]
+                print "questionState: " 
+                print questionState
+                if not questionState["question"]:
+                    # here the msg is the question
+                    print ' i should be setting the question'
+                    questionState["question"]=msg
+                    self._ask_for_answer(user)
+                elif not questionState["answer"]: 
+                    # here the msg is the answer
+                    questionState["answer"]=msg
+                    self._ask_for_category(user)
+                else:
+                    # here the msg is the category
+                    questionState["category"]=msg
+                    self._write_new_question(user)
+                return
             # if not, try to match the message to the answer.
             else:
                 if msg.lower().strip() == self._answer.answer.lower():
                     self._winner(user, channel)
                     self._save_game()
-        except:
+        except IOError:
             return
 
     def _winner(self, user, channel):
@@ -244,7 +266,7 @@ class triviabot(irc.IRCClient):
             return
         self._cmsg(user, "I'm nameless's trivia bot.")
         self._cmsg(user, "Commands: score, standings, giveclue, help, next, "
-                   "skip, source")
+                   "skip, source, add")
         self._cmsg("Admin commands: die, set <user> <score>, start, stop, "
                    "save")
 
@@ -257,6 +279,37 @@ class triviabot(irc.IRCClient):
         self._cmsg(user, 'My source can be found at: '
                    'https://github.com/rawsonj/triviabot')
 
+    def _ask_for_question(self, args, user, channel):
+        '''
+        lets users add questions to the triviabot
+        '''
+        print " user is " + user
+        self._newQuestionMap[user] = {"question":"", "answer":"", "category": ""}
+        self.msg(user, "what is the question you want to add?")
+    
+    def _ask_for_answer(self,user):
+        '''
+        asks the user for the answer to the question they just added
+        '''
+        self.msg(user,"ok what is the answer to your question?")
+
+    def _ask_for_category(self,user):
+        '''
+        ask the user for the category of the question they just added
+        '''
+        self.msg(user, "last thing, what is the category for this question?")
+
+    def _write_new_question(self, user):
+        question = self._newQuestionMap[user]["question"]
+        answer = self._newQuestionMap[user]["answer"]
+        category = self._newQuestionMap[user]["category"]
+        categoryFile = open(config.Q_DIR + category,"a")
+        categoryFile.write(question+'`'+answer+'\n')
+        categoryFile.close()
+
+        del self._newQuestionMap[user]
+        self.msg(user, "got it -- the question has been added")
+        
     def select_command(self, command, args, user, channel):
         '''
         Callback that responds to commands given to the bot.
@@ -271,7 +324,8 @@ class triviabot(irc.IRCClient):
                                   'standings': self._standings,
                                   'giveclue': self._give_clue,
                                   'next': self._next_vote,
-                                  'skip': self._next_question
+                                  'skip': self._next_question,
+                                  'add': self._ask_for_question
                                   }
         priviledged_commands = {'die': self._die,
                                 'set': self._set_user_score,
@@ -457,7 +511,7 @@ class triviabot(irc.IRCClient):
         while damaged_question:
             # randomly select file
             filename = choice(listdir(self._questions_dir))
-            fd = open(config.Q_DIR+filename)
+            fd =  open(config.Q_DIR+filename)
             lines = fd.read().splitlines()
             myline = choice(lines)
             fd.close()
