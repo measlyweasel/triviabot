@@ -122,7 +122,6 @@ class triviabot(irc.IRCClient):
         if self._clue_number == 0:
             self._votes = 0
             self._voters = []
-            self._get_new_question()
             self._current_points = points[self._clue_number]
             # Blank line.
             self._gmsg("")
@@ -385,6 +384,7 @@ class triviabot(irc.IRCClient):
         if self._lc.running:
             return
         else:
+            self._get_new_question()
             self._lc.start(config.WAIT_INTERVAL)
             self.factory.running = True
 
@@ -508,7 +508,7 @@ class triviabot(irc.IRCClient):
         while damaged_question:
             # randomly select file
             filename = choice(listdir(self._questions_dir))
-            self._category = filename.replace("_", " ").capitalize()
+            self._category = filename.replace("_", " ").title()
             fd = open(config.Q_DIR+filename)
             lines = fd.read().splitlines()
             myline = choice(lines)

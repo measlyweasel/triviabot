@@ -24,7 +24,7 @@ class Answer:
                 self._masked_answer += i
 
     def give_clue(self):
-        if self._answer == self._masked_answer:
+        if len(self._answer) < 4 or self._answer == self._masked_answer:
             return self._masked_answer
 
         letter = ' '
