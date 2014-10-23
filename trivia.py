@@ -73,6 +73,7 @@ class triviabot(irc.IRCClient):
     def __init__(self):
         self._answer = Answer()
         self._question = ''
+        self._category = ''
         self._scores = {}
         self._clue_number = 0
         self._admins = list(config.ADMINS)
@@ -124,6 +125,7 @@ class triviabot(irc.IRCClient):
             self._current_points = points[self._clue_number]
             # Blank line.
             self._gmsg("")
+            self._gmsg("The category is " + self._category)
             self._gmsg("Next question:")
             self._gmsg(self._question)
             self._gmsg("Clue: %s" % self._answer.current_clue())
@@ -131,6 +133,7 @@ class triviabot(irc.IRCClient):
         # we must be somewhere in between
         elif self._clue_number < 4:
             self._current_points = points[self._clue_number]
+            self._gmsg("Category: " + self._category)
             self._gmsg("Question:")
             self._gmsg(self._question)
             self._gmsg('Clue: %s' % self._answer.give_clue())
@@ -457,6 +460,7 @@ class triviabot(irc.IRCClient):
         while damaged_question:
             # randomly select file
             filename = choice(listdir(self._questions_dir))
+            self._category = filename.replace("_", " ").capitalize()
             fd = open(config.Q_DIR+filename)
             lines = fd.read().splitlines()
             myline = choice(lines)
@@ -468,6 +472,7 @@ class triviabot(irc.IRCClient):
                 print(myline)
                 continue
             self._answer.set_answer(temp_answer.strip())
+            self._gmsg("The next category will be %s" % (self._category))
             damaged_question = False
 
 
